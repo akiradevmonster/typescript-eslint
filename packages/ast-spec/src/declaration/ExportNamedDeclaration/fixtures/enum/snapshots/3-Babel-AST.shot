@@ -1,0 +1,45 @@
+Program {
+  type: "Program",
+  body: [
+    ExportNamedDeclaration {
+      type: "ExportNamedDeclaration",
+      assertions: [],
+      declaration: TSEnumDeclaration {
+        type: "TSEnumDeclaration",
+        id: Identifier {
+          type: "Identifier",
+          name: "Foo",
+
+          range: [12, 15],
+          loc: {
+            start: { column: 12, line: 1 },
+            end: { column: 15, line: 1 },
+          },
+        },
+        members: [],
+
+        range: [7, 18],
+        loc: {
+          start: { column: 7, line: 1 },
+          end: { column: 18, line: 1 },
+        },
+      },
+      exportKind: "value",
+      source: null,
+      specifiers: [],
+
+      range: [0, 18],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 18, line: 1 },
+      },
+    },
+  ],
+  sourceType: "module",
+
+  range: [0, 19],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}
