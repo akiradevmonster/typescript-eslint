@@ -1,0 +1,55 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended', ':approveMajorUpdates'],
+
+  dependencyDashboardLabels: ['dependencies', 'repo maintenance'],
+  enabledManagers: ['github-actions', 'npm'],
+
+  ignoreDeps: [
+    // AJV is intentionally synced with ESLint.
+    // https://github.com/eslint/eslint/blob/13dbecdea749abf51951ce61662eec2621a4b9af/package.json#L77
+    'ajv',
+    // ESM only so we can't go higher until we natively run ESM internally.
+    'globby',
+    // ESM only so we can't go higher until we natively run ESM internally.
+    'execa',
+  ],
+  ignorePaths: [
+    // Integration test package.json's should never be updated as they're purposely fixed tests.
+    'packages/integration-tests/fixtures',
+  ],
+
+  labels: ['dependencies'],
+
+  // Wait well over npm's three day window for any new package as a precaution against malicious publishes.
+  // https://docs.npmjs.com/policies/unpublish/#packages-published-less-than-72-hours-ago
+  minimumReleaseAge: '7 days',
+
+  packageRules: [
+    {
+      addLabels: ['javascript'],
+      description: 'Label JS ecosystem PRs appropriately.',
+      matchManagers: ['npm'],
+    },
+    {
+      addLabels: ['github-actions'],
+      description: 'Label GHA ecosystem PRs appropriately.',
+      matchManagers: ['github-actions'],
+    },
+  ],
+
+  // We've found enabling patch updates on all dependencies is a lot of noise.
+  patch: {
+    enabled: false,
+  },
+
+  postUpdateOptions: [
+    // Run yarn dedupe to cleanup the lockfile after updates.
+    'yarnDedupeHighest',
+  ],
+
+  // By default renovate will auto-rebase whenever the dep pranch falls behind main.
+  // This is annoying as it spams notifications and creates unnecessary action runs.
+  // Instead only auto-rebase when conflicted, and we can trigger a manual rebase if required.
+  rebaseWhen: 'conflicted',
+}
