@@ -1,0 +1,29 @@
+name: Accessibility-alt-text-bot
+on:
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [opened, edited]
+  issue_comment:
+    # nx bot and netlify bot edit their comments regularly
+    # this floods our action queue with this action
+    # it's rare that someone edits a comment to add an image so to save our queue we ignore the edit
+    types: [created]
+  discussion:
+    types: [created, edited]
+  discussion_comment:
+    types: [created, edited]
+
+permissions:
+  issues: write
+  pull-requests: write
+  discussions: write
+
+jobs:
+  accessibility_alt_text_bot:
+    name: Check alt text is set on images
+    if: ${{ !endsWith(github.actor, '[bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get action 'github/accessibility-alt-text-bot'
+        uses: github/accessibility-alt-text-bot@v1.7.1
