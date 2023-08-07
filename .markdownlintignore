@@ -1,0 +1,4 @@
+CHANGELOG.md
+docs/packages/*/generated
+node_modules
+tests/integration/fixtures/markdown
