@@ -1,0 +1,515 @@
+---
+id: parser
+sidebar_label: parser
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# `@typescript-eslint/parser`
+
+<PackageLink packageName="parser" scope="@typescript-eslint" />
+
+> An [ESLint parser](https://eslint.org/docs/user-guide/configuring/plugins#specifying-parser) used to parse TypeScript code into ESLint-compatible nodes, as well as provide backing TypeScript programs. ✨
+
+This is necessary because TypeScript produces a different, incompatible AST format to the one that ESLint requires to work.
+For example, this is not valid JavaScript code because it contains the `: number` type annotation:
+
+```ts
+let x: number = 1;
+```
+
+ESLint's native Espree parser would raise an error attempting to parse it.
+
+Additionally, because TypeScript is developed separately and with different goals from ESLint, ESTree, and Espree, its AST also represents nodes differently in many cases.
+TS's AST is optimized for its use case of parsing incomplete code and typechecking.
+ESTree is unoptimized and intended for "general purpose" use-cases of traversing the AST.
+
+:::tip
+You can select `@typescript-eslint/parser` on the [typescript-eslint playground](/play#showAST=es)'s right sidebar by selecting _ESTree_.
+:::
+
+## Configuration
+
+The following additional configuration options are available by specifying them in [`parserOptions`](https://eslint.org/docs/user-guide/configuring/language-options#specifying-parser-options) in your ESLint configuration file.
+
+```ts
+interface ParserOptions {
+  cacheLifetime?: {
+    glob?: number | 'Infinity';
+  };
+  disallowAutomaticSingleRunInference?: boolean;
+  ecmaFeatures?: {
+    jsx?: boolean;
+    globalReturn?: boolean;
+  };
+  ecmaVersion?: number | 'latest';
+  emitDecoratorMetadata?: boolean;
+  experimentalDecorators?: boolean;
+  isolatedDeclarations?: boolean;
+  extraFileExtensions?: string[];
+  jsDocParsingMode?: 'all' | 'none' | 'type-info';
+  jsxFragmentName?: string | null;
+  jsxPragma?: string | null;
+  lib?: string[];
+  programs?: import('typescript').Program[];
+  project?: string | string[] | boolean | null;
+  projectFolderIgnoreList?: string[];
+  projectService?: boolean | ProjectServiceOptions;
+  tsconfigRootDir?: string;
+  warnOnUnsupportedTypeScriptVersion?: boolean;
+}
+```
+
+### `disallowAutomaticSingleRunInference`
+
+> Default `process.env.TSESTREE_SINGLE_RUN` or `true`.
+
+Whether to stop using common heuristics to infer whether ESLint is being used as part of a single run (as opposed to `--fix` mode or in a persistent session such as an editor extension).
+In other words, typescript-eslint is faster by default, and this option disables an automatic performance optimization.
+
+When typescript-eslint handles TypeScript Program management behind the scenes for [linting with type information](../getting-started/Typed_Linting.mdx), this distinction is important for performance.
+There is significant overhead to managing TypeScript "Watch" Programs needed for the long-running use-case.
+Being able to assume the single run case allows typescript-eslint to faster immutable Programs instead.
+
+This setting's default value can be specified by setting a `TSESTREE_SINGLE_RUN` environment variable to `"false"` or `"true"`.
+For example, `TSESTREE_SINGLE_RUN=false npx eslint .` will disable it.
+
+:::note
+We recommend leaving this option off if possible.
+We've seen allowing automatic single run inference improve linting speed in CI by up to 10-20%.
+:::
+
+### `cacheLifetime`
+
+This option allows you to granularly control our internal cache expiry lengths.
+
+You can specify the number of seconds as an integer number, or the string 'Infinity' if you never want the cache to expire.
+
+By default cache entries will be evicted after 30 seconds, or will persist indefinitely if the parser infers that it is a single run (see [`disallowAutomaticSingleRunInference`](#disallowAutomaticSingleRunInference)).
+
+### `ecmaFeatures`
+
+Optional additional options to describe how to parse the raw syntax.
+
+#### `jsx`
+
+> Default `false`.
+
+Enable parsing JSX when `true`.
+More details can be found in the [TypeScript handbook's JSX docs](https://www.typescriptlang.org/docs/handbook/jsx.html).
+
+**NOTE:** this setting does not affect known file types (`.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts`, `.tsx`, `.json`) because the TypeScript compiler has its own internal handling for known file extensions.
+
+{/* https://github.com/microsoft/TypeScript/blob/d6e483b8dabd8fd37c00954c3f2184bb7f1eb90c/src/compiler/utilities.ts#L6281-L6285 */}
+
+The exact behavior is as follows:
+
+- `.js`, `.mjs`, `.cjs`, `.jsx`, `.tsx` files are always parsed as if this is `true`.
+- `.ts`, `.mts`, `.cts` files are always parsed as if this is `false`.
+- For "unknown" extensions (`.md`, `.vue`):
+  - If `parserOptions.project` is _not_ provided:
+    - The setting will be respected.
+  - If `parserOptions.project` is provided (i.e. you are using rules with type information):
+    - **always parsed as if this is `false`**
+
+#### `globalReturn`
+
+> Default `false`.
+
+This options allows you to tell the parser if you want to allow global `return` statements in your codebase.
+
+### `ecmaVersion`
+
+> Default `2018`.
+
+Accepts any valid ECMAScript version number or `'latest'`:
+
+- A version: es3, es5, es6, es7, es8, es9, es10, es11, es12, es13, ..., or
+- A year: es2015, es2016, es2017, es2018, es2019, es2020, es2021, es2022, ..., or
+- `'latest'`
+
+When it's a version or a year, the value **must** be a number - so do not include the `es` prefix.
+
+Specifies the version of ECMAScript syntax you want to use. This is used by the parser to determine how to perform scope analysis, and it affects the default
+
+### `emitDecoratorMetadata`
+
+> Default `undefined`.
+
+This option allow you to tell parser to act as if `emitDecoratorMetadata: true` is set in `tsconfig.json`, but without [type-aware linting](../getting-started/Typed_Linting.mdx). In other words, you don't have to specify `parserOptions.project` in this case, making the linting process faster.
+
+### `experimentalDecorators`
+
+> Default `undefined`.
+
+This option allow you to tell parser to act as if `experimentalDecorators: true` is set in `tsconfig.json`, but without [type-aware linting](../getting-started/Typed_Linting.mdx). In other words, you don't have to specify `parserOptions.project` in this case, making the linting process faster.
+
+### `extraFileExtensions`
+
+> Default `undefined`.
+
+This option allows you to provide one or more additional file extensions which should be considered in the TypeScript Program compilation.
+The default extensions are `['.js', '.mjs', '.cjs', '.jsx', '.ts', '.mts', '.cts', '.tsx']`.
+Add extensions starting with `.`, followed by the file extension. E.g. for a `.vue` file use `"extraFileExtensions": [".vue"]`.
+
+:::note
+See [Changes to `extraFileExtensions` with `projectService`](../troubleshooting/typed-linting/Performance.mdx#changes-to-extrafileextensions-with-projectservice) to avoid performance issues.
+:::
+
+### `isolatedDeclarations`
+
+> Default `undefined`.
+
+This option allow you to tell parser to act as if `isolatedDeclarations: true` is set in `tsconfig.json`, but without [type-aware linting](../getting-started/Typed_Linting.mdx).
+In other words, you don't have to specify `parserOptions.project` in this case, making the linting process faster.
+
+### `jsDocParsingMode`
+
+> Default if `parserOptions.project` is set, then `'all'`, otherwise `'none'`
+
+When TS parses a file it will also parse JSDoc comments into the AST - which can then be consumed by lint rules.
+If you are using TypeScript version >=5.3 then this option can be used as a performance optimization.
+
+The valid values for this rule are:
+
+- `'all'` - parse all JSDoc comments, always.
+- `'none'` - parse no JSDoc comments, ever.
+- `'type-info'` - parse just JSDoc comments that are required to provide correct type-info. TS will always parse JSDoc in non-TS files, but never in TS files.
+
+If you do not use lint rules like `eslint-plugin-deprecation` that rely on TS's JSDoc tag representation, then you can set this to `'none'` to improve parser performance.
+
+### `jsxFragmentName`
+
+> Default `null`
+
+The identifier that's used for JSX fragment elements (after transpilation).
+If `null`, assumes transpilation will always use a member of the configured `jsxPragma`.
+This should not be a member expression - just the root identifier (i.e. use `"h"` instead of `"h.Fragment"`).
+
+If you provide `parserOptions.project`, you do not need to set this, as it will be automatically detected from the compiler.
+
+### `jsxPragma`
+
+> Default `'React'`
+
+The identifier that's used for JSX Elements creation (after transpilation).
+If you're using a library other than React (like `preact`), then you should change this value. If you are using the [new JSX transform](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html) you can set this to `null`.
+
+This should not be a member expression - just the root identifier (i.e. use `"React"` instead of `"React.createElement"`).
+
+If you provide `parserOptions.project`, you do not need to set this, as it will be automatically detected from the compiler.
+
+### `lib`
+
+> Default `['es2018']`
+
+For valid options, see the [TypeScript compiler options](https://www.typescriptlang.org/tsconfig#lib).
+
+Specifies the TypeScript `lib`s that are available. This is used by the scope analyser to ensure there are global variables declared for the types exposed by TypeScript.
+
+If you provide `parserOptions.project`, you do not need to set this, as it will be automatically detected from the compiler.
+
+### `programs`
+
+> Default `undefined`.
+
+This option allows you to programmatically provide an instance of a TypeScript Program object that will provide type information to rules.
+This will override any programs that would have been computed from `parserOptions.project`.
+All linted files must be part of the provided program(s).
+
+[Refer to the TypeScript Wiki for an example on how to write the `resolveModuleNames` function](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API#customizing-module-resolution).
+
+### `project`
+
+:::note
+We now recommend using [`projectService`](#projectservice) instead of `project` for easier configuration and faster linting.
+:::
+
+> Default `undefined`.
+
+A path to your project's TSConfig. **This setting or [`projectService`](#projectservice) are required to use [rules which require type information](../getting-started/Typed_Linting.mdx)**.
+
+Accepted value types:
+
+```js
+// find the tsconfig.json nearest to each source file
+project: true,
+
+// path
+project: './tsconfig.json';
+
+// glob pattern
+project: './packages/**/tsconfig.json';
+
+// array of paths and/or glob patterns
+project: ['./packages/**/tsconfig.json', './separate-package/tsconfig.json'];
+
+// ways to disable type-aware linting (useful for overrides configs)
+project: false;
+project: null;
+```
+
+- If `true`, each source file's parse will find the nearest `tsconfig.json` file to that source file.
+
+  - This is done by checking that source file's directory tree for the nearest `tsconfig.json`.
+
+- If you use project references, TypeScript will **not** automatically use project references to resolve files. This means that you will have to add each referenced tsconfig to the `project` field either separately, or via a glob.
+
+- Note that using wide globs `**` in your `parserOptions.project` may cause performance implications. Instead of globs that use `**` to recursively check all folders, prefer paths that use a single `*` at a time. For more info see [#2611](https://github.com/typescript-eslint/typescript-eslint/issues/2611).
+
+- TypeScript will ignore files with duplicate filenames in the same folder (for example, `src/file.ts` and `src/file.js`). TypeScript purposely ignores all but one of the files, only keeping the one file with the highest priority extension (the extension priority order (from highest to lowest) is `.ts`, `.tsx`, `.d.ts`, `.js`, `.jsx`). For more info see [#955](https://github.com/typescript-eslint/typescript-eslint/issues/955).
+
+:::note
+Relative paths are interpreted relative to the current working directory if [`tsconfigRootDir`](#tsconfigrootdir) is not set.
+:::
+
+If this setting is specified, you must only lint files that are included in the projects as defined by the provided TSConfig file(s). If your existing configuration does not include all of the files you would like to lint, you can create a separate `tsconfig.eslint.json` as follows:
+
+```jsonc
+{
+  // extend your base config so you don't have to redefine your compilerOptions
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "typings/**/*.ts",
+    // etc
+
+    // if you have a mixed JS/TS codebase, don't forget to include your JS files
+    "src/**/*.js",
+  ],
+}
+```
+
+For an option that allows linting files outside of your TSConfig file(s), see [`projectService`](#projectService).
+
+<HiddenHeading id="experimental_useprojectservice" />
+
+### `projectService`
+
+> Default `false`.
+
+Specifies using TypeScript APIs to generate type information for rules.
+It will automatically use the nearest `tsconfig.json` for each file (like `project: true`).
+It can also be configured to also allow type information to be computed for JavaScript files without the `allowJs` compiler option (unlike `project: true`).
+
+<Tabs groupId="eslint-config">
+<TabItem value="Flat Config">
+
+```js title="eslint.config.js"
+export default [
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+      },
+    },
+  },
+];
+```
+
+</TabItem>
+<TabItem value="Legacy Config">
+
+```js title=".eslintrc.js"
+module.exports = {
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    projectService: true,
+  },
+};
+```
+
+</TabItem>
+</Tabs>
+
+**This setting or [`project`](#project) are required to use [rules which require type information](../getting-started/Typed_Linting.mdx)**.
+
+This option brings two main benefits over the older `project`:
+
+- Simpler configurations: most projects shouldn't need to explicitly configure `project` paths or create `tsconfig.eslint.json`s
+- Predictability: it uses the same type information services as editors, giving better consistency with the types seen in editors
+
+See [FAQs > Typed Linting > Project Service Issues](../troubleshooting/typed-linting/index.mdx#project-service-issues) for help on working with the project service.
+
+#### `ProjectServiceOptions`
+
+The behavior of `parserOptions.projectService` can be customized by setting it to an object.
+
+```js
+{
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    projectService: {
+      allowDefaultProject: ['*.js'],
+    },
+  },
+};
+```
+
+:::tip
+See [Troubleshooting & FAQs > Typed Linting > Project Service Issues](../troubleshooting/typed-linting/index.mdx#project-service-issues) for help using these options.
+:::
+
+##### `allowDefaultProject`
+
+> Default `[]` _(none)_
+
+Globs of files to allow running with the default project compiler options despite not being matched by the project service.
+It takes in an array of string paths that will be resolved relative to the [`tsconfigRootDir`](#tsconfigrootdir).
+
+This is intended to produce type information for config files such as `eslint.config.js` that aren't included in their sibling `tsconfig.json`.
+Every file with type information retrieved from the default project incurs a non-trivial performance overhead to linting.
+Use this option sparingly.
+
+There are several restrictions on this option to prevent it from being overused:
+
+- `**` is not allowed in globs passed to it
+- Files that match `allowDefaultProject` may not also be included in their nearest `tsconfig.json`
+
+##### `defaultProject`
+
+> Default `'tsconfig.json'`
+
+Path to a TSConfig to use instead of TypeScript's default project configuration.
+It takes in a string path that will be resolved relative to the [`tsconfigRootDir`](#tsconfigrootdir).
+
+`projectService.defaultProject` only impacts the "out-of-project" files included by [`allowDefaultProject`](#allowdefaultproject).
+
+##### `loadTypeScriptPlugins`
+
+> Default `false`
+
+Whether the project service should be allowed to load [TypeScript plugins](https://www.typescriptlang.org/tsconfig/plugins.html).
+This is `false` by default to prevent plugins from registering persistent file watchers or other operations that might prevent ESLint processes from exiting when run on the command-line.
+
+If your project is configured with custom rules that interact with TypeScript plugins, it may be useful to turn this on in your editor.
+For example, only enabling this option when running within VS Code:
+
+```js
+parserOptions: {
+  projectService: {
+    loadTypeScriptPlugins: !!process.env.VSCODE_PID,
+  }
+}
+```
+
+##### `maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING`
+
+> Default: `8`.
+
+The maximum number of files [`allowDefaultProject`](#allowdefaultproject) may match.
+Each file match slows down linting, so if you do need to use this, please file an informative issue on typescript-eslint explaining why - so we can help you avoid using it!
+
+### `projectFolderIgnoreList`
+
+> Default `["**/node_modules/**"]`.
+
+This option allows you to ignore folders from being included in your provided list of `project`s.
+This is useful if you have configured glob patterns, but want to make sure you ignore certain folders.
+
+It accepts an array of globs to exclude from the `project` globs.
+
+For example, by default it will ensure that a glob like `./**/tsconfig.json` will not match any `tsconfig`s within your `node_modules` folder (some npm packages do not exclude their source files from their published packages).
+
+### `tsconfigRootDir`
+
+> Default `undefined`.
+
+This option allows you to provide the root directory for relative TSConfig paths specified in the `project` option above.
+Doing so ensures running ESLint from a directory other than the root will still be able to find your TSConfig.
+
+### `warnOnUnsupportedTypeScriptVersion`
+
+> Default `true`.
+
+This option allows you to toggle the warning that the parser will give you if you use a version of TypeScript which is not explicitly supported. The warning message would look like this:
+
+```plaintext
+=============
+
+WARNING: You are currently running a version of TypeScript which is not officially supported by @typescript-eslint/typescript-estree.
+
+* @typescript-eslint/typescript-estree version: 8.15.0
+* Supported TypeScript versions: >=4.7.4 <5.7.0
+* Your TypeScript version: 5.7.1
+
+Please only submit bug reports when using the officially supported version.
+
+=============
+```
+
+## Utilities
+
+### `createProgram(configFile, projectDirectory)`
+
+This serves as a utility method for users of the `parserOptions.programs` feature to create a TypeScript program instance from a config file.
+
+```ts
+declare function createProgram(
+  configFile: string,
+  projectDirectory?: string,
+): import('typescript').Program;
+```
+
+Example usage:
+
+<Tabs groupId="eslint-config">
+<TabItem value="Flat Config">
+
+```js title="eslint.config.mjs"
+import * as parser from '@typescript-eslint/parser';
+
+export default [
+  {
+    parserOptions: {
+      programs: [parser.createProgram('tsconfig.json')],
+    },
+  },
+];
+```
+
+</TabItem>
+<TabItem value="Legacy Config">
+
+```js title=".eslintrc.js"
+const parser = require('@typescript-eslint/parser');
+
+module.exports = {
+  parserOptions: {
+    programs: [parser.createProgram('tsconfig.json')],
+  },
+};
+```
+
+</TabItem>
+</Tabs>
+
+### `withoutProjectParserOptions(parserOptions)`
+
+Removes options that prompt the parser to parse the project with type information.
+In other words, you can use this if you are invoking the parser directly, to ensure that one file will be parsed in isolation, which is much faster.
+
+This is useful in cases where you invoke the parser directly, such as in an ESLint plugin context.
+
+```ts
+declare function withoutProjectParserOptions(
+  options: TSESTreeOptions,
+): TSESTreeOptions;
+```
+
+Example usage:
+
+```js title="somePlugin.js"
+const parser = require('@typescript-eslint/parser');
+
+function parse(path, content, context) {
+  const contextParserOptions = context.languageOptions?.parserOptions ?? {};
+  const parserOptions =
+    parser.withoutProjectParserOptions(contextParserOptions);
+
+  // Do something with the cleaned-up options eventually, such as invoking the parser
+  parser.parseForESLint(content, parserOptions);
+}
+```
