@@ -1,0 +1,71 @@
+Program {
+  type: "Program",
+  body: [
+    ClassDeclaration {
+      type: "ClassDeclaration",
+      body: ClassBody {
+        type: "ClassBody",
+        body: [],
+
+        range: [30, 32],
+        loc: {
+          start: { column: 30, line: 1 },
+          end: { column: 32, line: 1 },
+        },
+      },
+      id: Identifier {
+        type: "Identifier",
+        name: "Foo",
+
+        range: [6, 9],
+        loc: {
+          start: { column: 6, line: 1 },
+          end: { column: 9, line: 1 },
+        },
+      },
+      superClass: Identifier {
+        type: "Identifier",
+        name: "Set",
+
+        range: [18, 21],
+        loc: {
+          start: { column: 18, line: 1 },
+          end: { column: 21, line: 1 },
+        },
+      },
+      superTypeParameters: TSTypeParameterInstantiation {
+        type: "TSTypeParameterInstantiation",
+        params: [
+          TSStringKeyword {
+            type: "TSStringKeyword",
+
+            range: [22, 28],
+            loc: {
+              start: { column: 22, line: 1 },
+              end: { column: 28, line: 1 },
+            },
+          },
+        ],
+
+        range: [21, 29],
+        loc: {
+          start: { column: 21, line: 1 },
+          end: { column: 29, line: 1 },
+        },
+      },
+
+      range: [0, 32],
+      loc: {
+        start: { column: 0, line: 1 },
+        end: { column: 32, line: 1 },
+      },
+    },
+  ],
+  sourceType: "script",
+
+  range: [0, 33],
+  loc: {
+    start: { column: 0, line: 1 },
+    end: { column: 0, line: 2 },
+  },
+}
